@@ -102,23 +102,10 @@ public class WifiListAdapter extends RecyclerView.Adapter<WifiListAdapter.WifiLi
     public void onBindViewHolder(WifiListViewHolder holder, int position) {
         WifiScanResult wifiScanResult = wifiScanResults.get(position);
         String ssid = wifiScanResult.getScanResult().SSID;
-        String capabilities = wifiScanResult.getScanResult().capabilities;
         holder.tvName.setText(ssid);
-        if(!TextUtils.isEmpty(capabilities)){
-            if(capabilities.contains("WPA2-PSK")){
-                capabilities = "WPA2-PSK";
-            }else if(capabilities.contains("WPA-PSK")){
-                capabilities = "WPA-PSK";
-            }else if(capabilities.contains("WEP")){
-                capabilities = "WEP";
-            }else if(capabilities.contains("EAP")){
-                capabilities = "EAP";
-            }else{
-                capabilities = "未加密";
-            }
-        }else{
-            capabilities = "未知";
-        }
+
+        SecurityModeEnum securityModeEnum = WifiAdmin.getSecurityMode(wifiScanResult.getScanResult());
+        String capabilities = securityModeEnum.name();
 
         SupplicantState supplicantState = wifiScanResult.getSupplicantState();
         if(null != supplicantState){

@@ -10,7 +10,6 @@ import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -25,10 +24,12 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
 import java.util.ArrayList;
 import java.util.List;
 
 import pub.devrel.easypermissions.EasyPermissions;
+import wisefy.WiseFy;
 
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLED;
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLING;
@@ -44,6 +45,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
     private WifiListAdapter wifiListAdapter;
     private WifiManager wifiManager;
     private SwitchCompat switchToggleWifi;
+    private WiseFy mWiseFy;
     // 所需的全部权限
     static final String[] PERMISSIONS = new String[]{
             Manifest.permission.ACCESS_FINE_LOCATION
@@ -62,6 +64,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         switchToggleWifi = (SwitchCompat) findViewById(R.id.switch_toggle);
         switchToggleWifi.setOnCheckedChangeListener(onCheckedChangeListener);
 
+        mWiseFy = new WiseFy.withContext(MainActivity.this).logging(true).getSmarts();
 
         wifiList = (RecyclerView) findViewById(R.id.wifi_list);
         wifiListAdapter = new WifiListAdapter(getApplicationContext());
@@ -71,7 +74,30 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
                 new ConnectWifiDialog(MainActivity.this) {
                     @Override
                     public void connect(String password) {
-                        WifiAdmin.connectWiFi(wifiListAdapter.getItem(position).getScanResult(),password);
+                        ScanResult scanResult = wifiListAdapter.getItem(position).getScanResult();
+                        int networkId = -1;
+                        switch (WifiAdmin.getSecurityMode(scanResult)){
+                            case WPA:
+                            case WPA2:
+//                                WifiAdmin.connectWPA2Network(scanResult.SSID,password);
+                                networkId = mWiseFy.addWPA2Network(scanResult.SSID,password);
+                                break;
+                            case WEP:
+//                                WifiAdmin.connectWEPNetwork(scanResult.SSID,password);
+                                networkId = mWiseFy.addWEPNetwork(scanResult.SSID,password);
+                                break;
+                            case OPEN:
+//                                WifiAdmin.connectOpenNetwork(scanResult.SSID);
+                                networkId = mWiseFy.addOpenNetwork(scanResult.SSID);
+                                break;
+                            default:
+                                break;
+                        }
+//                        mWiseFy.connectToNetwork(scanResult.SSID,10000);
+                        boolean ret1 = wifiManager.disconnect();
+                        boolean ret2 = wifiManager.enableNetwork(networkId, true);
+                        boolean ret3 = wifiManager.reconnect();
+                        Log.d(TAG,networkId + " - " + ret1 + " - " + ret2 + " - " + ret3);
                     }
                 }.setSsid(wifiListAdapter.getItem(position).getScanResult().SSID).show();
             }
@@ -189,11 +215,13 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
                             break;
                         case DISCONNECTED:// 断开连接
                             Log.i(TAG, "onReceive: DISCONNECTED:// 断开连接");
+                            wifiListAdapter.updateSupplicantState(supplicantState);
                             break;
                         case INACTIVE: // 不活跃的
                             WifiInfo connectFailureInfo = wifiManager.getConnectionInfo();
                             Log.i(TAG, "onReceive: INACTIVE 不活跃的  connectFailureInfo = " + connectFailureInfo);
-                            refreshList();
+//                            refreshList();
+
                             break;
                         case SCANNING: // 正在扫描
                             Log.i(TAG, "onReceive: SCANNING 正在扫描");
@@ -215,15 +243,8 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
                             break;
                         case COMPLETED: // 完成
                             Log.i(TAG, "onReceive: WIFI_CONNECT_SUCCESS: // 完成");
-                            WifiInfo connectSuccessInfo = wifiManager.getConnectionInfo();
-                            if (null != connectSuccessInfo) {
-
-//                                Message wifiConnectSuccessMessage = Message.obtain();
-//                                wifiConnectSuccessMessage.what = WIFI_CONNECT_SUCCESS;
-//                                wifiConnectSuccessMessage.obj = connectSuccessInfo.getSSID();
-//                                mCallBackHandler.sendMessage(wifiConnectSuccessMessage);
-                            }
-                            refreshList();
+//                            refreshList();
+                            wifiListAdapter.updateSupplicantState(supplicantState);
                             break;
                         case DORMANT:
                             Log.i(TAG, "onReceive: DORMANT:");
