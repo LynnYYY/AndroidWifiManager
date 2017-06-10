@@ -19,6 +19,7 @@ package wisefy;
 
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.ScanResult;
@@ -28,6 +29,7 @@ import android.net.wifi.WifiManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -145,9 +147,9 @@ public class WiseFy {
             return WISEFY_FAILURE;
         }
         if (mWifiManager != null) {
-            boolean ssidAlreadyConfigured = checkIfNetworkInConfigurationList(ssid);
+            WifiConfiguration configuredNetwork = getConfigurationBySsid(ssid);
 
-            if (!ssidAlreadyConfigured) {
+            if (null == configuredNetwork) {
                 if (LogUtil.isLoggable(TAG, Log.DEBUG, mLoggingEnabled)) {
                     Log.d(TAG, "Adding open network with SSID " + ssid);
                 }
@@ -167,6 +169,8 @@ public class WiseFy {
                 wifiConfig.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
 
                 return addNetwork(wifiConfig);
+            }else{
+                return configuredNetwork.networkId;
             }
         } else {
             if (LogUtil.isLoggable(TAG, Log.ERROR, mLoggingEnabled)) {
@@ -192,9 +196,9 @@ public class WiseFy {
             return WISEFY_FAILURE;
         }
         if (mWifiManager != null) {
-            boolean ssidAlreadyConfigured = checkIfNetworkInConfigurationList(ssid);
+            WifiConfiguration configuredNetwork = getConfigurationBySsid(ssid);
 
-            if (!ssidAlreadyConfigured) {
+            if (null == configuredNetwork) {
                 if (LogUtil.isLoggable(TAG, Log.DEBUG, mLoggingEnabled)) {
                     Log.d(TAG, "Adding WEP network with SSID " + ssid);
                 }
@@ -213,6 +217,10 @@ public class WiseFy {
                 wifiConfig.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP104);
 
                 return addNetwork(wifiConfig);
+            }else{
+                configuredNetwork.wepKeys[0] = "\"" + password + "\"";
+                return updateNetwork(configuredNetwork);
+//                return configuredNetwork.networkId;
             }
         } else {
             if (LogUtil.isLoggable(TAG, Log.ERROR, mLoggingEnabled)) {
@@ -238,9 +246,9 @@ public class WiseFy {
             return WISEFY_FAILURE;
         }
         if (mWifiManager != null) {
-            boolean ssidAlreadyConfigured = checkIfNetworkInConfigurationList(ssid);
+            WifiConfiguration configuredNetwork = getConfigurationBySsid(ssid);
 
-            if (!ssidAlreadyConfigured) {
+            if (null == configuredNetwork) {
                 if (LogUtil.isLoggable(TAG, Log.DEBUG, mLoggingEnabled)) {
                     Log.d(TAG, "Adding WPA2 network with SSID " + ssid);
                 }
@@ -262,6 +270,9 @@ public class WiseFy {
                 wifiConfig.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
 
                 return addNetwork(wifiConfig);
+            }else{
+                configuredNetwork.preSharedKey = "\"" + password + "\"";
+                return updateNetwork(configuredNetwork);
             }
         } else {
             if (LogUtil.isLoggable(TAG, Log.ERROR, mLoggingEnabled)) {
@@ -327,6 +338,19 @@ public class WiseFy {
                             }
                             mWifiManager.disconnect();
                             mWifiManager.enableNetwork(wifiConfiguration.networkId, true);
+
+
+                            try {
+                                Class classWifiManager = Class.forName("android.net.wifi.WifiManager");
+                                Field filedService = classWifiManager.getDeclaredField("mService");
+                                filedService.setAccessible(true);
+                            } catch (ClassNotFoundException e) {
+                                e.printStackTrace();
+                            }catch (NoSuchFieldException e) {
+                                e.printStackTrace();
+                            }
+
+
                             mWifiManager.reconnect();
                             return waitToConnectToSSID(ssidToConnectTo, timeoutInMillis);
                         }
@@ -670,24 +694,6 @@ public class WiseFy {
     }
 
     /**
-     * To check if an SSID is in the list of configured networks
-     *
-     * @param ssid - The SSID to check and see if it's in the list of configured networks
-     *
-     * @return boolean - If the SSID is in the list of configured networks
-     */
-    public boolean isNetworkInConfigurationList(String ssid) {
-        if (mWifiManager != null) {
-            return checkIfNetworkInConfigurationList(ssid);
-        } else {
-            if (LogUtil.isLoggable(TAG, Log.ERROR, mLoggingEnabled)) {
-                Log.e(TAG, "No mWifiManager to check if network is in the configuration list");
-            }
-        }
-        return false;
-    }
-
-    /**
      * To check and return if a network is secure (WEP/PSK/EAP capabilities)
      *
      * @param scanResult - The network to see if it is secure
@@ -855,6 +861,27 @@ public class WiseFy {
     }
 
     /**
+     * 更新网络配置
+     *
+     * @param wifiConfig 配置信息
+     * @return NetworkId
+     */
+    private int updateNetwork(WifiConfiguration wifiConfig) {
+        if (null != mWifiManager) {
+            int networkId = mWifiManager.updateNetwork(wifiConfig);
+//            if (WIFI_MANAGER_FAILURE != networkId) {
+//                boolean isSave = mWifiManager.saveConfiguration();
+//                if (isSave) {
+                    return networkId;
+//                }
+//            }
+        }
+
+
+        return WIFI_MANAGER_FAILURE;
+    }
+
+    /**
      * Used internally by addOpenNetwork, addWEPNetwork, addWPA2Network, and
      * isNetworkInConfigurationList to see if an ssid is already saved (CASE SENSITIVE!)
      *
@@ -863,11 +890,11 @@ public class WiseFy {
      * {@link #addOpenNetwork(String)}
      * {@link #addWEPNetwork(String, String)}
      * {@link #addWPA2Network(String, String)}
-     * {@link #isNetworkInConfigurationList(String)}
      *
      * @return boolean - If the ssid was found in the configuration list
      */
-    private boolean checkIfNetworkInConfigurationList(String ssid) {
+    private WifiConfiguration getConfigurationBySsid(String ssid) {
+        WifiConfiguration  ret = null;
         List<WifiConfiguration> list = mWifiManager.getConfiguredNetworks();
         if (list != null && list.size() > 0) {
             for (int i = 0; i < list.size(); i++) {
@@ -881,7 +908,10 @@ public class WiseFy {
                         if (LogUtil.isLoggable(TAG, Log.DEBUG, mLoggingEnabled)) {
                             Log.d(TAG, "Found SSID in list");
                         }
-                        return true;
+                        ret = wifiConfiguration;
+                        break;
+//                        return true;
+//                        return wifiConfiguration.networkId;
                     }
                 }
             }
@@ -890,7 +920,7 @@ public class WiseFy {
                 Log.w(TAG, "Found 0 configured networks");
             }
         }
-        return false;
+        return ret;
     }
 
     /**

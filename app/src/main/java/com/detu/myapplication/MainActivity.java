@@ -120,6 +120,8 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         intentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         intentFilter.addAction(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
         registerReceiver(wifiBroadcastReceiver,intentFilter);
+
+
     }
 
 

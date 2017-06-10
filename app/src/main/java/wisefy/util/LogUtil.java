@@ -35,14 +35,14 @@ public class LogUtil {
      */
     public static boolean isLoggable(String tag, int level, boolean loggingEnabled) {
         boolean isLoggable;
-        if(loggingEnabled) {
+//        if(loggingEnabled) {
             isLoggable = true;
-        } else {
-            if (tag.length() > 23) {
-                tag = tag.substring(0, 22);
-            }
-            isLoggable = Log.isLoggable(tag, level);
-        }
+//        } else {
+//            if (tag.length() > 23) {
+//                tag = tag.substring(0, 22);
+//            }
+//            isLoggable = Log.isLoggable(tag, level);
+//        }
         return isLoggable;
     }
 }
