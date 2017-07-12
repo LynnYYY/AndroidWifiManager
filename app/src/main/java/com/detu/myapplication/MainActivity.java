@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
@@ -24,12 +25,13 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.isupatches.wisefy.WiseFy;
+import com.isupatches.wisefy.callbacks.ConnectToNetworkCallbacks;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import pub.devrel.easypermissions.EasyPermissions;
-import wisefy.WiseFy;
 
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLED;
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLING;
@@ -70,34 +72,96 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         wifiListAdapter = new WifiListAdapter(getApplicationContext());
         wifiListAdapter.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view,final int position, long id) {
+            public void onItemClick(final AdapterView<?> parent, View view, final int position, long id) {
+//                ScanResult scanResult = wifiListAdapter.getItem(position).getScanResult();
+//                Intent intent = new Intent();
+//                intent.setAction("com.farproc.wifi.connecter.action.CONNECT_OR_EDIT");
+//                intent.putExtra("com.farproc.wifi.connecter.extra.HOTSPOT",scanResult);
+//                startActivity(intent);
+
                 new ConnectWifiDialog(MainActivity.this) {
                     @Override
                     public void connect(String password) {
-                        ScanResult scanResult = wifiListAdapter.getItem(position).getScanResult();
+                        final ScanResult scanResult = wifiListAdapter.getItem(position).getScanResult();
                         int networkId = -1;
-                        switch (WifiAdmin.getSecurityMode(scanResult)){
-                            case WPA:
-                            case WPA2:
+                        if(!mWiseFy.isNetworkInConfigurationList(scanResult.SSID)){
+                            switch (WifiAdmin.getSecurityMode(scanResult)){
+                                case WPA:
+                                case WPA2:
 //                                WifiAdmin.connectWPA2Network(scanResult.SSID,password);
-                                networkId = mWiseFy.addWPA2Network(scanResult.SSID,password);
-                                break;
-                            case WEP:
+                                    networkId = mWiseFy.addWPA2Network(scanResult.SSID,password);
+                                    break;
+                                case WEP:
 //                                WifiAdmin.connectWEPNetwork(scanResult.SSID,password);
-                                networkId = mWiseFy.addWEPNetwork(scanResult.SSID,password);
-                                break;
-                            case OPEN:
+                                    networkId = mWiseFy.addWEPNetwork(scanResult.SSID,password);
+                                    break;
+                                case OPEN:
 //                                WifiAdmin.connectOpenNetwork(scanResult.SSID);
-                                networkId = mWiseFy.addOpenNetwork(scanResult.SSID);
-                                break;
-                            default:
-                                break;
+                                    networkId = mWiseFy.addOpenNetwork(scanResult.SSID);
+//                                if(configuredNetwork == null){
+//                                    Wifi.connectToNewNetwork(MainActivity.this,wifiManager,scanResult,password,10);
+//                                }else{
+//                                    Wifi.connectToConfiguredNetwork(MainActivity.this,wifiManager,configuredNetwork,false);
+//                                }
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
-//                        mWiseFy.connectToNetwork(scanResult.SSID,10000);
-                        boolean ret1 = wifiManager.disconnect();
-                        boolean ret2 = wifiManager.enableNetwork(networkId, true);
-                        boolean ret3 = wifiManager.reconnect();
-                        Log.d(TAG,networkId + " - " + ret1 + " - " + ret2 + " - " + ret3);
+
+                        mWiseFy.connectToNetwork(scanResult.SSID, 5000, new ConnectToNetworkCallbacks() {
+                            @Override
+                            public void connectedToNetwork() {
+                                Toast.makeText(MainActivity.this,"connectedToNetwork",Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void connectToNetworkWiseFyFailure(Integer wisefyReturnCode) {
+                                Toast.makeText(MainActivity.this,"connectToNetworkWiseFyFailure",Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void failureConnectingToNetwork() {
+                                Toast.makeText(MainActivity.this,"failureConnectingToNetwork",Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void networkNotFoundToConnectTo() {
+                                Toast.makeText(MainActivity.this,"networkNotFoundToConnectTo",Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
+
+//
+////                        mWiseFy.connectToNetwork(scanResult.SSID,10000);
+//                        boolean ret1 = wifiManager.disconnect();
+////                        boolean ret2 = wifiManager.enableNetwork(networkId, true);
+//                        boolean ret2 = false;
+////                        mWifiManager.enableNetwork(wifiConfiguration.networkId, true);
+//                        try {
+//                            Class classWifiManager = Class.forName("android.net.wifi.WifiManager");
+//                            Field filedService = classWifiManager.getDeclaredField("mService");
+//                            filedService.setAccessible(true);
+//                            //android.net.wifi.IWifiManager
+//                            Class classService = filedService.getType();
+//
+//                            Method methodEnableNetwork = null;
+//                            Method[] methods = classService.getDeclaredMethods();
+//                            for(Method method:methods){
+//                                Log.d(TAG,method.getName());
+//                                if(method.getName().equals("enableNetwork")){
+//                                    methodEnableNetwork = method;
+//                                    methodEnableNetwork.setAccessible(true);
+//                                    Object objectService = filedService.get(wifiManager);
+//                                    ret2 = (boolean) methodEnableNetwork.invoke(objectService,networkId, true);
+//                                    break;
+//                                }
+//                            }
+//                        } catch (Exception e) {
+//                            e.printStackTrace();
+//                        }
+//                        boolean ret3 = wifiManager.reconnect();
+//                        Log.d(TAG,networkId + " - " + ret1 + " - " + ret2 + " - " + ret3);
                     }
                 }.setSsid(wifiListAdapter.getItem(position).getScanResult().SSID).show();
             }

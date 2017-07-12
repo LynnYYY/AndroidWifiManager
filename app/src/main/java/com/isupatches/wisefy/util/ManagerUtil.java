@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2017 Patches Klinefelter
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,28 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package wisefy.util;
+package com.isupatches.wisefy.util;
 
 
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
+import com.isupatches.wisefy.WiseFy;
 
-public class GetManagerUtil {
 
-    private static final GetManagerUtil GET_MANAGER_UTIL = new GetManagerUtil();
+public class ManagerUtil {
+
+    private static final ManagerUtil MANAGER_UTIL = new ManagerUtil();
 
     /**
      * Private constructor with no setup
      */
-    private GetManagerUtil() {
+    private ManagerUtil() {
     }
 
     /**
-     * @return instance of GetManagerUtil
+     * @return instance of ManagerUtil
      */
-    public static GetManagerUtil getInstance() {
-        return GET_MANAGER_UTIL;
+    public static ManagerUtil getInstance() {
+        return MANAGER_UTIL;
     }
 
     /**
@@ -65,7 +67,7 @@ public class GetManagerUtil {
      */
     public WifiManager getWiFiManager(Context context) {
         if(context != null) {
-            return (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            return (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         } else {
             return null;
         }

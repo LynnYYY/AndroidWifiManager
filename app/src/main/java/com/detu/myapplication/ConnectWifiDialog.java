@@ -64,7 +64,6 @@ public abstract class ConnectWifiDialog extends Dialog implements View.OnClickLi
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.btn_cancel:
-
                 dismiss();
                 break;
             case R.id.btn_connect:

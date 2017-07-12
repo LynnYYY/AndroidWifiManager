@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2017 Patches Klinefelter
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package wisefy.util;
+package com.isupatches.wisefy.util;
 
 
 import android.os.Build;
@@ -32,11 +32,11 @@ public class SSIDUtil {
     /**
      * @return instance of SSIDUtil
      */
-    public static SSIDUtil getInstance() {
+    static SSIDUtil getInstance() {
         return SSID_UTIL;
     }
 
-    public String convertSSIDForConfig(String ssid) {
+    String convertSSIDForConfig(String ssid) {
         // On devices with version Kitkat and below, We need to send SSID name
         // with double quotes. On devices with version Lollipop, We need to send
         // SSID name without double quotes
